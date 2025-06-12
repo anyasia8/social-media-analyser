@@ -26,4 +26,4 @@ Thumbs.db
 
 # Build output
 dist/
-build/ 
+build/ *.env.backup
