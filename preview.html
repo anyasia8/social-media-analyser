@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Social Media Analyzer - Preview</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body class="bg-gray-100">
+    <div class="container mx-auto px-4 py-8">
+        <h1 class="text-4xl font-bold text-center mb-8 text-blue-600">Social Media Analyzer</h1>
+        
+        <!-- Topic Input Section -->
+        <div class="bg-white rounded-lg shadow-lg p-6 mb-8">
+            <h2 class="text-2xl font-semibold mb-4">Topic Analysis</h2>
+            <div class="flex gap-4">
+                <input type="text" id="topicInput" placeholder="Enter your topic" 
+                       class="flex-1 p-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-400">
+                <button onclick="showPreview()" id="analyzeBtn"
+                        class="bg-blue-500 text-white px-6 py-2 rounded hover:bg-blue-600 transition-colors">
+                    Analyze
+                </button>
+            </div>
+        </div>
+
+        <!-- Loading Indicator -->
+        <div id="loadingIndicator" class="hidden">
+            <div class="flex items-center justify-center space-x-2 animate-pulse">
+                <div class="w-8 h-8 bg-blue-400 rounded-full"></div>
+                <div class="w-8 h-8 bg-blue-400 rounded-full"></div>
+                <div class="w-8 h-8 bg-blue-400 rounded-full"></div>
+            </div>
+            <p class="text-center mt-4 text-gray-600">Analyzing social media data...</p>
+        </div>
+
+        <!-- AI Suggestions Section -->
+        <div id="suggestionsSection" class="bg-white rounded-lg shadow-lg p-6 mb-8">
+            <h2 class="text-2xl font-semibold mb-4">AI Keyword Suggestions</h2>
+            <div id="keywordsList" class="flex flex-wrap gap-2">
+                <span class="bg-blue-100 text-blue-800 px-3 py-1 rounded-full">#ArtificialIntelligence</span>
+                <span class="bg-blue-100 text-blue-800 px-3 py-1 rounded-full">#MachineLearning</span>
+                <span class="bg-blue-100 text-blue-800 px-3 py-1 rounded-full">#AIEthics</span>
+                <span class="bg-blue-100 text-blue-800 px-3 py-1 rounded-full">#FutureOfAI</span>
+                <span class="bg-blue-100 text-blue-800 px-3 py-1 rounded-full">#TechInnovation</span>
+            </div>
+        </div>
+
+        <!-- Results Sections -->
+        <div id="resultsContainer" class="grid grid-cols-1 md:grid-cols-2 gap-8">
+            <!-- Top Influencers -->
+            <div class="bg-white rounded-lg shadow-lg p-6">
+                <h2 class="text-2xl font-semibold mb-4">Top Influencers</h2>
+                <div id="influencersList" class="space-y-4">
+                    <div class="border-b pb-2">
+                        <div class="font-semibold">@AIResearcher</div>
+                        <div class="text-sm text-gray-600">Followers: 125K</div>
+                    </div>
+                    <div class="border-b pb-2">
+                        <div class="font-semibold">@TechGuru</div>
+                        <div class="text-sm text-gray-600">Followers: 89K</div>
+                    </div>
+                    <div class="border-b pb-2">
+                        <div class="font-semibold">@FutureScientist</div>
+                        <div class="text-sm text-gray-600">Followers: 67K</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Trending Tweets -->
+            <div class="bg-white rounded-lg shadow-lg p-6">
+                <h2 class="text-2xl font-semibold mb-4">Trending Tweets (Last 7 Days)</h2>
+                <div id="tweetsList" class="space-y-4">
+                    <div class="border-b pb-2">
+                        <p class="text-sm">Exciting developments in AI this week! New breakthroughs in natural language processing...</p>
+                        <div class="text-xs text-gray-600 mt-1">2024-03-20 • 1.2K likes</div>
+                    </div>
+                    <div class="border-b pb-2">
+                        <p class="text-sm">The future of AI is not just about technology, but about how we integrate it responsibly...</p>
+                        <div class="text-xs text-gray-600 mt-1">2024-03-19 • 890 likes</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Analysis Summary -->
+            <div class="bg-white rounded-lg shadow-lg p-6 md:col-span-2">
+                <h2 class="text-2xl font-semibold mb-4">Summary Analysis</h2>
+                <div id="summaryContent" class="prose">
+                    <p class="text-gray-700">
+                        The conversation around AI this week has been dominated by discussions about ethical considerations and practical applications. Key themes include responsible AI development, breakthrough technologies, and industry adoption. Sentiment is generally positive, with a focus on future possibilities while acknowledging the need for careful implementation.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function showPreview() {
+            document.getElementById('loadingIndicator').classList.remove('hidden');
+            document.getElementById('analyzeBtn').disabled = true;
+            
+            setTimeout(() => {
+                document.getElementById('loadingIndicator').classList.add('hidden');
+                document.getElementById('analyzeBtn').disabled = false;
+                alert('This is a static preview. In the actual application, this would fetch real-time data.');
+            }, 1500);
+        }
+
+        // Add enter key support
+        document.getElementById('topicInput').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                showPreview();
+            }
+        });
+    </script>
+</body>
+</html> 

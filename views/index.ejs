@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Social Media Analyzer</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body class="bg-gray-100">
+    <div class="container mx-auto px-4 py-8">
+        <h1 class="text-4xl font-bold text-center mb-8 text-blue-600">Social Media Analyzer</h1>
+        
+        <!-- Topic Input Section -->
+        <div class="bg-white rounded-lg shadow-lg p-6 mb-8">
+            <h2 class="text-2xl font-semibold mb-4">Topic Analysis</h2>
+            <div class="flex gap-4">
+                <input type="text" id="topicInput" placeholder="Enter your topic" 
+                       class="flex-1 p-2 border rounded focus:outline-none focus:ring-2 focus:ring-blue-400">
+                <button onclick="analyzeTopic()" id="analyzeBtn"
+                        class="bg-blue-500 text-white px-6 py-2 rounded hover:bg-blue-600 transition-colors">
+                    Analyze
+                </button>
+            </div>
+        </div>
+
+        <!-- Loading Indicator -->
+        <div id="loadingIndicator" class="hidden">
+            <div class="flex items-center justify-center space-x-2 animate-pulse">
+                <div class="w-8 h-8 bg-blue-400 rounded-full"></div>
+                <div class="w-8 h-8 bg-blue-400 rounded-full"></div>
+                <div class="w-8 h-8 bg-blue-400 rounded-full"></div>
+            </div>
+            <p class="text-center mt-4 text-gray-600">Analyzing social media data...</p>
+        </div>
+
+        <!-- AI Suggestions Section -->
+        <div id="suggestionsSection" class="bg-white rounded-lg shadow-lg p-6 mb-8 hidden">
+            <h2 class="text-2xl font-semibold mb-4">AI Keyword Suggestions</h2>
+            <div id="keywordsList" class="flex flex-wrap gap-2">
+                <!-- Keywords will be inserted here -->
+            </div>
+        </div>
+
+        <!-- Results Sections -->
+        <div id="resultsContainer" class="grid grid-cols-1 md:grid-cols-2 gap-8 hidden">
+            <!-- Top Influencers -->
+            <div class="bg-white rounded-lg shadow-lg p-6">
+                <h2 class="text-2xl font-semibold mb-4">Top Influencers</h2>
+                <div id="influencersList" class="space-y-4">
+                    <!-- Influencers will be inserted here -->
+                </div>
+            </div>
+
+            <!-- Trending Tweets -->
+            <div class="bg-white rounded-lg shadow-lg p-6">
+                <h2 class="text-2xl font-semibold mb-4">Trending Tweets (Last 7 Days)</h2>
+                <div id="tweetsList" class="space-y-4">
+                    <!-- Tweets will be inserted here -->
+                </div>
+            </div>
+
+            <!-- Analysis Summary -->
+            <div class="bg-white rounded-lg shadow-lg p-6 md:col-span-2">
+                <h2 class="text-2xl font-semibold mb-4">Summary Analysis</h2>
+                <div id="summaryContent" class="prose">
+                    <!-- Summary will be inserted here -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        async function analyzeTopic() {
+            const topic = document.getElementById('topicInput').value;
+            if (!topic) return;
+
+            try {
+                // Show loading state
+                document.getElementById('loadingIndicator').classList.remove('hidden');
+                document.getElementById('analyzeBtn').disabled = true;
+                document.getElementById('resultsContainer').classList.add('hidden');
+                
+                // Get AI suggestions
+                const suggestionsResponse = await fetch('/api/suggestions', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ topic })
+                });
+                const suggestionsData = await suggestionsResponse.json();
+                
+                // Display keywords
+                const keywordsList = document.getElementById('keywordsList');
+                keywordsList.innerHTML = suggestionsData.keywords.map(keyword => 
+                    `<span class="bg-blue-100 text-blue-800 px-3 py-1 rounded-full">${keyword}</span>`
+                ).join('');
+                document.getElementById('suggestionsSection').classList.remove('hidden');
+
+                // Start analysis
+                const analysisResponse = await fetch('/api/analyze', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ topic })
+                });
+                const analysisData = await analysisResponse.json();
+
+                // Display influencers
+                const influencersList = document.getElementById('influencersList');
+                influencersList.innerHTML = analysisData.influencers.map(influencer => `
+                    <div class="border-b pb-2">
+                        <div class="font-semibold">${influencer.name}</div>
+                        <div class="text-sm text-gray-600">Followers: ${influencer.followers}</div>
+                    </div>
+                `).join('');
+
+                // Display tweets
+                const tweetsList = document.getElementById('tweetsList');
+                tweetsList.innerHTML = analysisData.tweets.map(tweet => `
+                    <div class="border-b pb-2">
+                        <p class="text-sm">${tweet.text}</p>
+                        <div class="text-xs text-gray-600 mt-1">
+                            ${new Date(tweet.timestamp).toLocaleDateString()} • ${tweet.likes} likes
+                        </div>
+                    </div>
+                `).join('');
+
+                // Display summary
+                const summaryContent = document.getElementById('summaryContent');
+                summaryContent.innerHTML = `<p class="text-gray-700">${analysisData.summary}</p>`;
+
+                // Show results
+                document.getElementById('resultsContainer').classList.remove('hidden');
+                
+            } catch (error) {
+                console.error('Error:', error);
+                alert('An error occurred during analysis');
+            } finally {
+                // Hide loading state
+                document.getElementById('loadingIndicator').classList.add('hidden');
+                document.getElementById('analyzeBtn').disabled = false;
+            }
+        }
+
+        // Add enter key support for the input field
+        document.getElementById('topicInput').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                analyzeTopic();
+            }
+        });
+    </script>
+</body>
+</html> 
