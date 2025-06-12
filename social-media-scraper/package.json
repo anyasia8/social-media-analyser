@@ -1,0 +1,30 @@
+{
+  "name": "social-media-scraper",
+  "version": "1.0.0",
+  "description": "Social media analysis tool using X API and MCP",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node src/index.js"
+  },
+  "keywords": [
+    "twitter",
+    "x",
+    "api",
+    "mcp",
+    "analysis"
+  ],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "dependencies": {
+    "axios": "^1.9.0",
+    "chart.js": "^4.4.9",
+    "dotenv": "^16.4.1",
+    "ejs": "^3.1.10",
+    "express": "^5.1.0",
+    "moment": "^2.30.1",
+    "openai": "^5.3.0",
+    "twitter-api-v2": "^1.15.2"
+  }
+}
