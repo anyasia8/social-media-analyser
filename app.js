@@ -1,6 +1,11 @@
-const express = require('express');
-const path = require('path');
-const analyzerService = require('./src/services/analyzerService');
+import express from 'express';
+import path from 'path';
+import { fileURLToPath } from 'url';
+import { analyzeTopic } from './src/services/analyzerService.js';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
 const app = express();
 const port = 3000;
 
@@ -23,20 +28,16 @@ app.post('/api/analyze', async (req, res) => {
     try {
         const { topic } = req.body;
         
-        // Run all analyses in parallel
-        const [influencers, tweets] = await Promise.all([
-            analyzerService.findTopInfluencers(topic),
-            analyzerService.getTrendingTweets(topic)
-        ]);
+        if (!topic) {
+            return res.status(400).json({ error: 'Topic is required' });
+        }
 
-        // Generate summary after getting tweets
-        const summary = await analyzerService.generateSummaryAnalysis(topic, tweets);
+        console.log('🎯 Received analysis request for topic:', topic);
+        
+        // Use the new orchestration function
+        const result = await analyzeTopic(topic);
 
-        res.json({
-            influencers,
-            tweets,
-            summary
-        });
+        res.json(result);
     } catch (error) {
         console.error('Analysis error:', error);
         res.status(500).json({ error: error.message });
@@ -46,8 +47,13 @@ app.post('/api/analyze', async (req, res) => {
 app.post('/api/suggestions', async (req, res) => {
     try {
         const { topic } = req.body;
-        const keywords = await analyzerService.generateKeywordSuggestions(topic);
-        res.json({ keywords });
+        
+        if (!topic) {
+            return res.status(400).json({ error: 'Topic is required' });
+        }
+
+        // For now, just return the topic as a suggestion
+        res.json({ suggestions: [topic] });
     } catch (error) {
         console.error('Suggestions error:', error);
         res.status(500).json({ error: error.message });

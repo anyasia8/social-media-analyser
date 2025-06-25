@@ -7,5 +7,4 @@ const openai = new OpenAI({
   organization: process.env.OPENAI_ORG_ID
 });
 
-console.log("API Key:", process.env.OPENAI_API_KEY ? "exists" : "missing");
-console.log("Org ID:", process.env.OPENAI_ORG_ID ? "exists" : "missing"); 
+console.log("API Key:", process.env.OPENAI_API_KEY ? "exists" : "missing"); 

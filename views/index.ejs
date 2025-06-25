@@ -43,28 +43,20 @@
         </div>
 
         <!-- Results Sections -->
-        <div id="resultsContainer" class="grid grid-cols-1 md:grid-cols-2 gap-8 hidden">
-            <!-- Top Influencers -->
-            <div class="bg-white rounded-lg shadow-lg p-6">
-                <h2 class="text-2xl font-semibold mb-4">Top Influencers</h2>
-                <div id="influencersList" class="space-y-4">
-                    <!-- Influencers will be inserted here -->
-                </div>
-            </div>
-
+        <div id="resultsContainer" class="grid grid-cols-1 gap-8 hidden">
             <!-- Trending Tweets -->
             <div class="bg-white rounded-lg shadow-lg p-6">
-                <h2 class="text-2xl font-semibold mb-4">Trending Tweets (Last 7 Days)</h2>
+                <h2 class="text-2xl font-semibold mb-4">Recent Tweets</h2>
                 <div id="tweetsList" class="space-y-4">
                     <!-- Tweets will be inserted here -->
                 </div>
             </div>
 
             <!-- Analysis Summary -->
-            <div class="bg-white rounded-lg shadow-lg p-6 md:col-span-2">
-                <h2 class="text-2xl font-semibold mb-4">Summary Analysis</h2>
+            <div class="bg-white rounded-lg shadow-lg p-6">
+                <h2 class="text-2xl font-semibold mb-4">AI Analysis</h2>
                 <div id="summaryContent" class="prose">
-                    <!-- Summary will be inserted here -->
+                    <!-- Analysis will be inserted here -->
                 </div>
             </div>
         </div>
@@ -81,21 +73,6 @@
                 document.getElementById('analyzeBtn').disabled = true;
                 document.getElementById('resultsContainer').classList.add('hidden');
                 
-                // Get AI suggestions
-                const suggestionsResponse = await fetch('/api/suggestions', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ topic })
-                });
-                const suggestionsData = await suggestionsResponse.json();
-                
-                // Display keywords
-                const keywordsList = document.getElementById('keywordsList');
-                keywordsList.innerHTML = suggestionsData.keywords.map(keyword => 
-                    `<span class="bg-blue-100 text-blue-800 px-3 py-1 rounded-full">${keyword}</span>`
-                ).join('');
-                document.getElementById('suggestionsSection').classList.remove('hidden');
-
                 // Start analysis
                 const analysisResponse = await fetch('/api/analyze', {
                     method: 'POST',
@@ -104,36 +81,38 @@
                 });
                 const analysisData = await analysisResponse.json();
 
-                // Display influencers
-                const influencersList = document.getElementById('influencersList');
-                influencersList.innerHTML = analysisData.influencers.map(influencer => `
-                    <div class="border-b pb-2">
-                        <div class="font-semibold">${influencer.name}</div>
-                        <div class="text-sm text-gray-600">Followers: ${influencer.followers}</div>
-                    </div>
-                `).join('');
+                // Display keywords
+                const keywordsList = document.getElementById('keywordsList');
+                keywordsList.innerHTML = analysisData.keywords.map(keyword => 
+                    `<span class="bg-blue-100 text-blue-800 px-3 py-1 rounded-full">${keyword}</span>`
+                ).join('');
+                document.getElementById('suggestionsSection').classList.remove('hidden');
 
                 // Display tweets
                 const tweetsList = document.getElementById('tweetsList');
-                tweetsList.innerHTML = analysisData.tweets.map(tweet => `
-                    <div class="border-b pb-2">
-                        <p class="text-sm">${tweet.text}</p>
-                        <div class="text-xs text-gray-600 mt-1">
-                            ${new Date(tweet.timestamp).toLocaleDateString()} • ${tweet.likes} likes
+                if (analysisData.tweets && analysisData.tweets.length > 0) {
+                    tweetsList.innerHTML = analysisData.tweets.slice(0, 5).map(tweet => `
+                        <div class="border-b pb-2">
+                            <p class="text-sm">${tweet.text || tweet.full_text || 'No text available'}</p>
+                            <div class="text-xs text-gray-600 mt-1">
+                                ${tweet.user?.username || 'Unknown user'} • ${tweet.likes || 0} likes
+                            </div>
                         </div>
-                    </div>
-                `).join('');
+                    `).join('');
+                } else {
+                    tweetsList.innerHTML = '<p class="text-gray-500">No tweets found for this topic.</p>';
+                }
 
-                // Display summary
+                // Display analysis
                 const summaryContent = document.getElementById('summaryContent');
-                summaryContent.innerHTML = `<p class="text-gray-700">${analysisData.summary}</p>`;
+                summaryContent.innerHTML = `<p class="text-gray-700">${analysisData.analysis}</p>`;
 
                 // Show results
                 document.getElementById('resultsContainer').classList.remove('hidden');
                 
             } catch (error) {
                 console.error('Error:', error);
-                alert('An error occurred during analysis');
+                alert('An error occurred during analysis: ' + error.message);
             } finally {
                 // Hide loading state
                 document.getElementById('loadingIndicator').classList.add('hidden');

@@ -1,182 +1,134 @@
-const { Cluster } = require('puppeteer-cluster');
-const puppeteer = require('puppeteer-extra');
-const StealthPlugin = require('puppeteer-extra-plugin-stealth');
-const moment = require('moment');
-const { OpenAI } = require('openai');
+import OpenAI from 'openai';
+import dotenv from 'dotenv';
+import { runScweetScraper } from './apifyXSearchService.js';
 
-// Add stealth plugin to avoid detection
-puppeteer.use(StealthPlugin());
+dotenv.config();
 
-class AnalyzerService {
-    constructor() {
-        this.cluster = null;
-        this.openai = new OpenAI({
-            apiKey: process.env.OPENAI_API_KEY
-        });
-    }
+const openai = new OpenAI({
+  apiKey: process.env.OPENAI_API_KEY
+});
 
-    async initCluster() {
-        if (!this.cluster) {
-            this.cluster = await Cluster.launch({
-                concurrency: Cluster.CONCURRENCY_CONTEXT,
-                maxConcurrency: 2,
-                puppeteerOptions: {
-                    headless: 'new',
-                    args: [
-                        '--no-sandbox',
-                        '--disable-setuid-sandbox',
-                        '--disable-dev-shm-usage',
-                        '--disable-accelerated-2d-canvas',
-                        '--disable-gpu'
-                    ]
-                },
-                monitor: true,
-                timeout: 30000
-            });
-        }
-        return this.cluster;
-    }
+// Function to expand the topic using OpenAI
+async function expandTopicWithOpenAI(prompt) {
+  const response = await openai.chat.completions.create({
+    model: 'gpt-3.5-turbo',
+    messages: [
+      { role: 'system', content: 'You are a helpful assistant that expands topics into clusters, keywords, and platform-specific queries. Return a JSON object with three arrays: words_and, words_or, and hashtag. Example: { "words_and": ["bitcoin", "price"], "words_or": ["cryptocurrency", "market"], "hashtag": ["btc", "crypto"] }' },
+      { role: 'user', content: `Expand this topic into relevant keywords for social media analysis. Return a JSON object with words_and, words_or, and hashtag arrays. Topic: ${prompt}` }
+    ]
+  });
 
-    async generateKeywordSuggestions(topic) {
-        try {
-            const completion = await this.openai.chat.completions.create({
-                messages: [
-                    {
-                        role: "system",
-                        content: "You are a social media analysis expert. Generate relevant keywords and hashtags for the given topic."
-                    },
-                    {
-                        role: "user",
-                        content: `Generate 5 relevant keywords and hashtags for analyzing social media content about: ${topic}`
-                    }
-                ],
-                model: "gpt-3.5-turbo",
-            });
-
-            const suggestions = completion.choices[0].message.content
-                .split('\n')
-                .filter(k => k.trim())
-                .map(k => k.replace(/^\d+\.\s*/, '').trim());
-
-            return suggestions;
-        } catch (error) {
-            console.error('Error generating keywords:', error);
-            return [];
-        }
-    }
-
-    async findTopInfluencers(topic, count = 5) {
-        const cluster = await this.initCluster();
-        const influencers = [];
-
-        try {
-            await cluster.task(async ({ page, data: searchTerm }) => {
-                await page.setViewport({ width: 1200, height: 800 });
-                await page.goto(`https://twitter.com/search?q=${encodeURIComponent(searchTerm)}%20min_faves%3A1000&src=typed_query&f=live`);
-                
-                // Wait for content to load
-                await page.waitForSelector('article', { timeout: 10000 });
-                await new Promise(r => setTimeout(r, 2000)); // Allow dynamic content to load
-
-                // Extract users from tweets
-                const users = await page.evaluate(() => {
-                    const articles = document.querySelectorAll('article');
-                    const users = new Map();
-
-                    articles.forEach(article => {
-                        const userElement = article.querySelector('div[data-testid="User-Name"]');
-                        if (userElement) {
-                            const name = userElement.textContent;
-                            const followersText = article.querySelector('span[data-testid="app-text-transition-container"]')?.textContent;
-                            users.set(name, followersText || '0');
-                        }
-                    });
-
-                    return Array.from(users.entries()).map(([name, followers]) => ({ name, followers }));
-                });
-
-                return users;
-            });
-
-            const results = await cluster.execute(topic);
-            influencers.push(...results.slice(0, count));
-
-        } catch (error) {
-            console.error('Error finding influencers:', error);
-        }
-
-        return influencers;
-    }
-
-    async getTrendingTweets(topic) {
-        const cluster = await this.initCluster();
-        const tweets = [];
-
-        try {
-            await cluster.task(async ({ page, data: searchTerm }) => {
-                const searchQuery = `${searchTerm} min_faves:500 until:${moment().format('YYYY-MM-DD')} since:${moment().subtract(7, 'days').format('YYYY-MM-DD')}`;
-                await page.setViewport({ width: 1200, height: 800 });
-                await page.goto(`https://twitter.com/search?q=${encodeURIComponent(searchQuery)}&src=typed_query&f=live`);
-                
-                // Wait for content to load
-                await page.waitForSelector('article', { timeout: 10000 });
-                await new Promise(r => setTimeout(r, 2000)); // Allow dynamic content to load
-
-                // Extract tweets
-                const extractedTweets = await page.evaluate(() => {
-                    const articles = document.querySelectorAll('article');
-                    return Array.from(articles).slice(0, 10).map(article => {
-                        const tweetText = article.querySelector('div[data-testid="tweetText"]')?.textContent || '';
-                        const timestamp = article.querySelector('time')?.getAttribute('datetime') || '';
-                        const likes = article.querySelector('div[data-testid="like"]')?.textContent || '0';
-                        const tweetUrl = article.querySelector('a[href*="/status/"]')?.href || '';
-                        return { text: tweetText, timestamp, likes, url: tweetUrl };
-                    });
-                });
-
-                return extractedTweets;
-            });
-
-            const results = await cluster.execute(topic);
-            tweets.push(...results);
-
-        } catch (error) {
-            console.error('Error getting trending tweets:', error);
-        }
-
-        return tweets;
-    }
-
-    async generateSummaryAnalysis(topic, tweets) {
-        try {
-            const tweetTexts = tweets.map(t => t.text).join('\n');
-            const completion = await this.openai.chat.completions.create({
-                messages: [
-                    {
-                        role: "system",
-                        content: "You are a social media trend analyst. Analyze the given tweets and provide a concise summary."
-                    },
-                    {
-                        role: "user",
-                        content: `Analyze these tweets about ${topic} and provide a brief summary of the main trends and sentiments:\n\n${tweetTexts}`
-                    }
-                ],
-                model: "gpt-3.5-turbo",
-            });
-
-            return completion.choices[0].message.content;
-        } catch (error) {
-            console.error('Error generating summary:', error);
-            return 'Unable to generate summary at this time.';
-        }
-    }
-
-    async cleanup() {
-        if (this.cluster) {
-            await this.cluster.close();
-            this.cluster = null;
-        }
-    }
+  return response.choices[0].message.content;
 }
 
-module.exports = new AnalyzerService(); 
+// Function to scrape Twitter data using Apify Scweet
+async function scrapeTwitterData(keywords, options = {}) {
+  console.log('🐦 [ANALYZER] Starting scrapeTwitterData function');
+  console.log('📋 [ANALYZER] Keywords received:', keywords);
+  console.log('⚙️ [ANALYZER] Options received:', JSON.stringify(options, null, 2));
+  
+  try {
+    console.log('📞 [ANALYZER] Calling runScweetScraper...');
+    // Destructure the keywords object to pass correct fields
+    const { words_and = [], words_or = [], hashtag = [] } = keywords;
+    const results = await runScweetScraper({
+      words_and,
+      words_or,
+      hashtag,
+      maxItems: "20",
+      since: options.since || '2024-06-01',
+      type: 'Latest',
+      ...options
+    });
+    
+    console.log('✅ [ANALYZER] runScweetScraper completed successfully');
+    console.log('📊 [ANALYZER] Results type:', typeof results);
+    console.log('📊 [ANALYZER] Results is array:', Array.isArray(results));
+    console.log('📊 [ANALYZER] Results length:', results ? results.length : 'undefined');
+    
+    if (results && results.length > 0) {
+      console.log('📝 [ANALYZER] Sample result item:', JSON.stringify(results[0], null, 2));
+    } else {
+      console.log('⚠️ [ANALYZER] No results returned from scraper');
+    }
+    
+    console.log('📤 [ANALYZER] Returning results to caller');
+    return results;
+  } catch (error) {
+    console.error('💥 [ANALYZER] Twitter scraping error:', error);
+    console.error('   Error type:', error.constructor.name);
+    console.error('   Error message:', error.message);
+    console.error('   Error stack:', error.stack);
+    return [];
+  }
+}
+
+// Function to analyze the results using OpenAI
+async function analyzeResults(rawData, topic) {
+  const response = await openai.chat.completions.create({
+    model: 'gpt-3.5-turbo',
+    messages: [
+      { role: 'system', content: 'You are a social media analyst. Analyze the provided tweets and provide insights about trends, sentiment, and key themes.' },
+      { role: 'user', content: `Analyze these tweets about "${topic}" and provide a summary of key insights: ${JSON.stringify(rawData.slice(0, 10))}` }
+    ]
+  });
+
+  return response.choices[0].message.content;
+}
+
+// Main orchestration function
+export async function analyzeTopic(topic) {
+  console.log('🎯 [MAIN] Starting analyzeTopic function');
+  console.log('📝 [MAIN] Topic received:', topic);
+  
+  try {
+    console.log('🔍 [MAIN] Starting analysis for topic:', topic);
+    
+    // Step 1: Expand topic with OpenAI
+    console.log('📝 [MAIN] Expanding topic...');
+    const expandedKeywords = await expandTopicWithOpenAI(topic);
+    console.log('✅ [MAIN] Topic expansion completed');
+    console.log('📋 [MAIN] Expanded keywords raw:', expandedKeywords);
+    
+    const keywords = JSON.parse(expandedKeywords);
+    console.log('🔑 [MAIN] Parsed keywords:', keywords);
+    
+    // Step 2: Scrape Twitter data
+    console.log('🐦 [MAIN] Scraping Twitter data...');
+    const twitterData = await scrapeTwitterData(keywords);
+    console.log('✅ [MAIN] Twitter scraping completed');
+    console.log('📊 [MAIN] Twitter data length:', twitterData ? twitterData.length : 'undefined');
+    
+    // Step 3: Analyze results
+    console.log('🧠 [MAIN] Analyzing results...');
+    const analysis = await analyzeResults(twitterData, topic);
+    console.log('✅ [MAIN] Analysis completed');
+    
+    const result = {
+      topic,
+      scweetKeywords: keywords, // for UI clarity
+      tweets: twitterData,
+      analysis,
+      timestamp: new Date().toISOString()
+    };
+    
+    console.log('🎉 [MAIN] Analysis completed successfully');
+    console.log('📊 [MAIN] Final result summary:');
+    console.log('   - Topic:', result.topic);
+    console.log('   - Keywords object:', result.scweetKeywords);
+    console.log('   - Tweets count:', result.tweets ? result.tweets.length : 0);
+    console.log('   - Analysis length:', result.analysis ? result.analysis.length : 0);
+    console.log('📤 [MAIN] Returning final result');
+    
+    return result;
+    
+  } catch (error) {
+    console.error('💥 [MAIN] Analysis error:', error);
+    console.error('   Error type:', error.constructor.name);
+    console.error('   Error message:', error.message);
+    console.error('   Error stack:', error.stack);
+    throw error;
+  }
+}
+
+export { expandTopicWithOpenAI, scrapeTwitterData, analyzeResults }; 

@@ -2,6 +2,8 @@ import OpenAI from "openai";
 import * as dotenv from "dotenv";
 dotenv.config();
 
+console.log("ENV DUMP:", process.env);
+
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
   organization: process.env.OPENAI_ORG_ID
@@ -12,7 +14,7 @@ console.log("API Key (first 4 chars):", process.env.OPENAI_API_KEY.slice(0, 4));
 
 try {
   const response = await openai.chat.completions.create({
-    model: "gpt-4",
+    model: "gpt-3.5-turbo",
     messages: [
       { role: "user", content: "Just say hi if this key works." }
     ]
